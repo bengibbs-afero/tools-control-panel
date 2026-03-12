@@ -193,6 +193,19 @@
     .tile-act:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
     .tile-act.del:hover { background: #ef4444; border-color: #ef4444; }
 
+    /* ── Drag-and-drop states ── */
+    .tile.dragging {
+      opacity: 0.35;
+      cursor: grabbing !important;
+      transform: scale(0.96) !important;
+      box-shadow: none !important;
+    }
+    .tile.drag-over {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 3px var(--accent-dim), var(--shadow-hover) !important;
+      transform: translateY(-3px) !important;
+    }
+
     /* ── Empty state ── */
     .empty {
       grid-column: 1 / -1;
@@ -549,7 +562,13 @@ function renderTiles() {
     const short = (t.url || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
 
     return `
-      <div class="tile" onclick="tileClick(event,'${id}')">
+      <div class="tile" data-id="${id}" draggable="true"
+           onclick="tileClick(event,'${id}')"
+           ondragstart="dragStart(event,'${id}')"
+           ondragover="dragOver(event,'${id}')"
+           ondragleave="dragLeave(event)"
+           ondrop="drop(event,'${id}')"
+           ondragend="dragEnd(event)">
         <div class="tile-actions">
           <button class="tile-act"     onclick="stopAndEdit(event,'${id}')" title="Edit">
             <i data-lucide="pencil"></i>
@@ -569,7 +588,7 @@ function renderTiles() {
 }
 
 function tileClick(e, id) {
-  // Clicks on the action area are handled by stopAndEdit / stopAndDel
+  if (afterDrag) return;  // suppress spurious click that fires after a drag
   if (e.target.closest('.tile-actions')) return;
   const t = tools.find(x => x.id === id);
   if (t && t.url) window.open(t.url, '_blank', 'noopener');
@@ -583,6 +602,62 @@ function esc(s) {
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
     .replace(/'/g,'&#39;');
+}
+
+// ══════════════════════════════════════════════════════════
+// DRAG-AND-DROP REORDER
+// ══════════════════════════════════════════════════════════
+let dragSrcId = null;   // id of the tile being dragged
+let afterDrag = false;  // blocks the spurious click that fires after a drag
+
+function dragStart(e, id) {
+  dragSrcId = id;
+  afterDrag = false;
+  e.dataTransfer.effectAllowed = 'move';
+  // Apply the faded style after the drag-ghost snapshot is taken
+  setTimeout(() => {
+    const el = document.querySelector(`.tile[data-id="${id}"]`);
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+
+function dragOver(e, id) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  if (id === dragSrcId) return;
+  document.querySelectorAll('.tile').forEach(t => t.classList.remove('drag-over'));
+  const el = document.querySelector(`.tile[data-id="${id}"]`);
+  if (el) el.classList.add('drag-over');
+}
+
+function dragLeave(e) {
+  // Only clear when the pointer has truly left the tile (not just moved to a child)
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+}
+
+function drop(e, targetId) {
+  e.preventDefault();
+  if (!dragSrcId || dragSrcId === targetId) return;
+  const srcIdx = tools.findIndex(t => t.id === dragSrcId);
+  const tgtIdx = tools.findIndex(t => t.id === targetId);
+  if (srcIdx === -1 || tgtIdx === -1) return;
+  const [moved] = tools.splice(srcIdx, 1);
+  tools.splice(tgtIdx, 0, moved);
+  afterDrag = true;
+  save();
+  renderTiles();
+}
+
+function dragEnd(e) {
+  // Clean up in case drop fired outside the grid or was cancelled
+  document.querySelectorAll('.tile').forEach(t => {
+    t.classList.remove('dragging', 'drag-over');
+  });
+  dragSrcId = null;
+  // Leave afterDrag=true long enough for the click event to fire and be swallowed
+  setTimeout(() => { afterDrag = false; }, 150);
 }
 
 // ══════════════════════════════════════════════════════════

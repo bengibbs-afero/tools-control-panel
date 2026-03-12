@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tools Panel</title>
+  <style>
+    /* ── Theme variables ── */
+    :root {
+      --bg:            #f4f4f5;
+      --surface:       #ffffff;
+      --surface-hover: #f0f0f2;
+      --text:          #18181b;
+      --text-sub:      #71717a;
+      --border:        #e4e4e7;
+      --accent:        #f97316;
+      --accent-dim:    rgba(249,115,22,0.12);
+      --accent-hover:  #ea6c0a;
+      --shadow:        0 2px 8px rgba(0,0,0,0.07);
+      --shadow-hover:  0 6px 20px rgba(0,0,0,0.12);
+      --radius:        12px;
+    }
+    [data-theme="dark"] {
+      --bg:            #0a0a0a;
+      --surface:       #141414;
+      --surface-hover: #1e1e1e;
+      --text:          #ededed;
+      --text-sub:      #888;
+      --border:        #272727;
+      --shadow:        0 2px 10px rgba(0,0,0,0.5);
+      --shadow-hover:  0 6px 24px rgba(249,115,22,0.18);
+    }
+
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: var(--shadow);
+    }
+    .topbar-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--accent);
+      flex: 1;
+      letter-spacing: -0.3px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 13px;
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s;
+      white-space: nowrap;
+    }
+    .btn:hover {
+      background: var(--surface-hover);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .btn svg { flex-shrink: 0; }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+      color: #fff;
+    }
+    .btn-icon {
+      padding: 7px 8px;
+    }
+
+    /* ── Tile grid ── */
+    .grid-wrap {
+      padding: 28px 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Tile ── */
+    .tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 18px 22px;
+      cursor: pointer;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0;
+      box-shadow: var(--shadow);
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+      user-select: none;
+    }
+    .tile:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+    }
+    .tile-icon {
+      color: var(--accent);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+    }
+    .tile-icon svg { width: 32px; height: 32px; }
+    .tile-name {
+      font-size: 14px;
+      font-weight: 650;
+      color: var(--text);
+      margin-bottom: 5px;
+      line-height: 1.3;
+    }
+    .tile-desc {
+      font-size: 12px;
+      color: var(--text-sub);
+      line-height: 1.45;
+    }
+    .tile-url {
+      margin-top: 8px;
+      font-size: 10px;
+      color: var(--text-sub);
+      opacity: 0.6;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+
+    /* ── Tile action buttons (appear on hover) ── */
+    .tile-actions {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      gap: 3px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .tile:hover .tile-actions { opacity: 1; }
+    .tile-act {
+      width: 27px;
+      height: 27px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+    .tile-act svg { width: 13px; height: 13px; }
+    .tile-act:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .tile-act.del:hover { background: #ef4444; border-color: #ef4444; }
+
+    /* ── Empty state ── */
+    .empty {
+      grid-column: 1 / -1;
+      padding: 64px 20px;
+      text-align: center;
+      color: var(--text-sub);
+    }
+    .empty svg { opacity: 0.2; display: block; margin: 0 auto 16px; width: 52px; height: 52px; }
+    .empty p { font-size: 15px; margin-bottom: 6px; }
+    .empty small { font-size: 13px; }
+
+    /* ── Modal overlay ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(3px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .overlay.open { display: flex; }
+
+    /* ── Modal box ── */
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      width: 500px;
+      max-width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+    }
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+    .modal-head h2 { font-size: 16px; font-weight: 700; }
+    .modal-close {
+      width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-sub);
+      cursor: pointer;
+    }
+    .modal-close:hover { background: var(--surface-hover); color: var(--text); }
+    .modal-close svg { width: 15px; height: 15px; }
+
+    /* ── Form elements ── */
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-sub);
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      padding: 9px 11px;
+      font-size: 14px;
+      font-family: inherit;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .field input:focus { border-color: var(--accent); }
+    .field input::placeholder { color: var(--text-sub); opacity: 0.6; }
+
+    /* ── Icon picker ── */
+    .icon-search { margin-bottom: 8px; }
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+      gap: 5px;
+      max-height: 210px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      background: var(--bg);
+    }
+    .icon-opt {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 7px 3px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: background 0.1s, border-color 0.1s;
+    }
+    .icon-opt:hover { background: var(--surface-hover); border-color: var(--border); }
+    .icon-opt.sel { border-color: var(--accent); background: var(--accent-dim); }
+    .icon-opt svg { width: 18px; height: 18px; }
+    .icon-opt span {
+      font-size: 8.5px;
+      color: var(--text-sub);
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 54px;
+      display: block;
+    }
+    .icon-preview {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: var(--text-sub);
+      min-height: 22px;
+    }
+    .icon-preview svg { width: 18px; height: 18px; color: var(--accent); }
+    .icon-none { font-style: italic; font-size: 12px; color: var(--text-sub); }
+
+    /* ── Modal footer ── */
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Confirm dialog ── */
+    .confirm-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 30px 28px;
+      width: 340px;
+      max-width: 100%;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+    }
+    .confirm-box h3 { font-size: 16px; margin-bottom: 8px; }
+    .confirm-box p { font-size: 13px; color: var(--text-sub); margin-bottom: 22px; }
+    .confirm-footer { display: flex; gap: 10px; justify-content: center; }
+    .btn-danger { background: #ef4444; color: #fff; border-color: #ef4444; }
+    .btn-danger:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+  </style>
+</head>
+<body data-theme="light">
+
+<!-- ── Top bar ─────────────────────────────────────────── -->
+<header class="topbar">
+  <div class="topbar-title">⚡ Tools Panel</div>
+  <button class="btn" onclick="triggerImport()" title="Import YAML config">
+    <i data-lucide="upload" style="width:14px;height:14px"></i>Import
+  </button>
+  <button class="btn" onclick="doExport()" title="Export YAML config">
+    <i data-lucide="download" style="width:14px;height:14px"></i>Export
+  </button>
+  <button class="btn btn-icon" id="themeBtn" onclick="toggleTheme()" title="Toggle light / dark">
+    <i data-lucide="moon" style="width:16px;height:16px"></i>
+  </button>
+  <button class="btn btn-primary" onclick="openAdd()">
+    <i data-lucide="plus" style="width:14px;height:14px"></i>Add Tool
+  </button>
+</header>
+
+<!-- ── Tile grid ────────────────────────────────────────── -->
+<div class="grid-wrap">
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- ── Hidden file input for YAML import ── -->
+<input type="file" id="yamlInput" accept=".yaml,.yml,.txt" style="display:none" onchange="handleImport(event)">
+
+<!-- ── Add / Edit modal ──────────────────────────────────── -->
+<div class="overlay" id="editOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalTitle">Add Tool</h2>
+      <button class="modal-close" onclick="closeEdit()"><i data-lucide="x"></i></button>
+    </div>
+
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="fName" placeholder="e.g. Grafana" maxlength="60">
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <input type="text" id="fDesc" placeholder="e.g. Metrics &amp; dashboards" maxlength="120">
+    </div>
+    <div class="field">
+      <label>URL</label>
+      <input type="text" id="fUrl" placeholder="e.g. http://localhost:3000" maxlength="500">
+    </div>
+    <div class="field">
+      <label>Icon</label>
+      <input type="text" class="icon-search" id="iconSearch"
+             placeholder="Search icons…" oninput="filterIcons(this.value)">
+      <div class="icon-grid" id="iconGrid"></div>
+      <div class="icon-preview" id="iconPreview">
+        <span class="icon-none">No icon selected</span>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closeEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTool()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete confirm modal ─────────────────────────────── -->
+<div class="overlay" id="delOverlay">
+  <div class="confirm-box">
+    <h3>Remove tool?</h3>
+    <p id="delMsg">This tool will be removed from your panel.</p>
+    <div class="confirm-footer">
+      <button class="btn" onclick="closeDel()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDel()">Remove</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// CURATED ICON SET  (~90 icons)
+// ══════════════════════════════════════════════════════════
+const ICONS = [
+  // Infrastructure & dev
+  'terminal','code','code-2','git-branch','git-merge','git-commit',
+  'database','server','cpu','hard-drive','network','cloud',
+  'package','box','container','layers',
+  // Analytics
+  'bar-chart-2','line-chart','pie-chart','activity',
+  'trending-up','trending-down','gauge',
+  // Tools & settings
+  'wrench','settings','settings-2','sliders','hammer','scissors',
+  // Communication
+  'mail','message-circle','message-square','send','bell','phone','slack',
+  // Files & data
+  'file-text','file-code','folder','folder-open','archive','download','upload',
+  // Security
+  'shield','lock','unlock','key','eye','eye-off','fingerprint',
+  // Media
+  'image','video','camera','mic','headphones','music',
+  // Navigation & links
+  'home','globe','map','compass','link','external-link','navigation',
+  // System & hardware
+  'monitor','laptop','smartphone','tablet','printer',
+  'save','refresh-cw','zap','power','wifi',
+  // Science & dev tools
+  'microscope','atom','bug','rocket','puzzle','workflow','bot','brain',
+  // General utility
+  'search','filter','grid','list','sidebar','play',
+  'star','bookmark','tag','clock','calendar',
+  'user','users','alert-circle','help-circle','info','check-circle',
+  'share-2','cloud-upload','cloud-download','radio','signal',
+];
+
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+let tools        = [];      // array of { id, name, description, url, icon }
+let editingId    = null;    // null = add, string = edit
+let selIcon      = null;    // currently selected icon name in picker
+let delId        = null;    // pending delete
+let visibleIcons = [...ICONS];
+
+// ══════════════════════════════════════════════════════════
+// PERSISTENCE  (localStorage as YAML)
+// ══════════════════════════════════════════════════════════
+const LS_KEY   = 'toolpanel_data';
+const LS_THEME = 'toolpanel_theme';
+
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const p = jsyaml.load(raw);
+      if (p && Array.isArray(p.tools)) tools = p.tools;
+    }
+  } catch (e) { console.warn('Load error:', e); }
+}
+
+function save() {
+  try {
+    localStorage.setItem(LS_KEY, jsyaml.dump({ tools }, { lineWidth: -1 }));
+  } catch (e) { console.warn('Save error:', e); }
+}
+
+// ══════════════════════════════════════════════════════════
+// THEME
+// ══════════════════════════════════════════════════════════
+function loadTheme() {
+  applyTheme(localStorage.getItem(LS_THEME) || 'light');
+}
+
+function toggleTheme() {
+  applyTheme(document.body.dataset.theme === 'dark' ? 'light' : 'dark');
+}
+
+function applyTheme(t) {
+  document.body.dataset.theme = t;
+  localStorage.setItem(LS_THEME, t);
+  // swap moon/sun icon
+  const btn = document.getElementById('themeBtn');
+  btn.innerHTML = t === 'dark'
+    ? '<i data-lucide="sun"  style="width:16px;height:16px"></i>'
+    : '<i data-lucide="moon" style="width:16px;height:16px"></i>';
+  lucide.createIcons({ nodes: [btn] });
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER TILES
+// ══════════════════════════════════════════════════════════
+function renderTiles() {
+  const grid = document.getElementById('grid');
+
+  if (!tools.length) {
+    grid.innerHTML = `
+      <div class="empty">
+        <i data-lucide="layout-grid"></i>
+        <p>No tools added yet</p>
+        <small>Click <strong>+ Add Tool</strong> in the top bar to get started</small>
+      </div>`;
+    lucide.createIcons();
+    return;
+  }
+
+  grid.innerHTML = tools.map(t => {
+    const icon  = esc(t.icon || 'box');
+    const id    = esc(t.id);
+    const name  = esc(t.name || '');
+    const desc  = esc(t.description || '');
+    const url   = esc(t.url || '');
+    const short = (t.url || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+    return `
+      <div class="tile" onclick="tileClick(event,'${id}')">
+        <div class="tile-actions">
+          <button class="tile-act"     onclick="stopAndEdit(event,'${id}')" title="Edit">
+            <i data-lucide="pencil"></i>
+          </button>
+          <button class="tile-act del" onclick="stopAndDel(event,'${id}')" title="Remove">
+            <i data-lucide="trash-2"></i>
+          </button>
+        </div>
+        <div class="tile-icon"><i data-lucide="${icon}"></i></div>
+        <div class="tile-name">${name}</div>
+        <div class="tile-desc">${desc}</div>
+        <div class="tile-url">${esc(short)}</div>
+      </div>`;
+  }).join('');
+
+  lucide.createIcons();
+}
+
+function tileClick(e, id) {
+  // Clicks on the action area are handled by stopAndEdit / stopAndDel
+  if (e.target.closest('.tile-actions')) return;
+  const t = tools.find(x => x.id === id);
+  if (t && t.url) window.open(t.url, '_blank', 'noopener');
+}
+
+function stopAndEdit(e, id) { e.stopPropagation(); openEdit(id); }
+function stopAndDel (e, id) { e.stopPropagation(); openDel(id);  }
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+// ══════════════════════════════════════════════════════════
+// ICON PICKER
+// ══════════════════════════════════════════════════════════
+function renderIconGrid() {
+  const g = document.getElementById('iconGrid');
+  g.innerHTML = visibleIcons.map(name => `
+    <div class="icon-opt ${selIcon === name ? 'sel' : ''}"
+         onclick="pickIcon('${name}')" title="${name}">
+      <i data-lucide="${name}"></i>
+      <span>${name}</span>
+    </div>`).join('');
+  lucide.createIcons({ nodes: [g] });
+}
+
+function filterIcons(q) {
+  const lq = q.toLowerCase().trim();
+  visibleIcons = lq ? ICONS.filter(n => n.includes(lq)) : [...ICONS];
+  renderIconGrid();
+}
+
+function pickIcon(name) {
+  selIcon = name;
+  renderIconGrid();
+  const prev = document.getElementById('iconPreview');
+  prev.innerHTML = `<i data-lucide="${name}"></i><span>${name}</span>`;
+  lucide.createIcons({ nodes: [prev] });
+}
+
+function setIconPreview(name) {
+  const prev = document.getElementById('iconPreview');
+  if (name) {
+    prev.innerHTML = `<i data-lucide="${name}"></i><span>${name}</span>`;
+  } else {
+    prev.innerHTML = `<span class="icon-none">No icon selected</span>`;
+  }
+  lucide.createIcons({ nodes: [prev] });
+}
+
+// ══════════════════════════════════════════════════════════
+// ADD / EDIT MODAL
+// ══════════════════════════════════════════════════════════
+function openAdd() {
+  editingId = null;
+  selIcon   = null;
+  document.getElementById('modalTitle').textContent = 'Add Tool';
+  document.getElementById('fName').value = '';
+  document.getElementById('fDesc').value = '';
+  document.getElementById('fUrl').value  = '';
+  document.getElementById('iconSearch').value = '';
+  visibleIcons = [...ICONS];
+  renderIconGrid();
+  setIconPreview(null);
+  document.getElementById('editOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('fName').focus(), 60);
+}
+
+function openEdit(id) {
+  const t = tools.find(x => x.id === id);
+  if (!t) return;
+  editingId = id;
+  selIcon   = t.icon || null;
+  document.getElementById('modalTitle').textContent = 'Edit Tool';
+  document.getElementById('fName').value = t.name        || '';
+  document.getElementById('fDesc').value = t.description || '';
+  document.getElementById('fUrl').value  = t.url         || '';
+  document.getElementById('iconSearch').value = '';
+  visibleIcons = [...ICONS];
+  renderIconGrid();
+  setIconPreview(selIcon);
+  document.getElementById('editOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('fName').focus(), 60);
+}
+
+function closeEdit() {
+  document.getElementById('editOverlay').classList.remove('open');
+}
+
+function saveTool() {
+  const name = document.getElementById('fName').value.trim();
+  const desc = document.getElementById('fDesc').value.trim();
+  const url  = document.getElementById('fUrl').value.trim();
+
+  if (!name) { alert('Please enter a name.'); document.getElementById('fName').focus(); return; }
+  if (!url)  { alert('Please enter a URL.');  document.getElementById('fUrl').focus();  return; }
+
+  if (editingId) {
+    const i = tools.findIndex(x => x.id === editingId);
+    if (i !== -1) tools[i] = { ...tools[i], name, description: desc, url, icon: selIcon || 'box' };
+  } else {
+    tools.push({
+      id:          'tool_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+      name, description: desc, url,
+      icon: selIcon || 'box',
+    });
+  }
+
+  save();
+  renderTiles();
+  closeEdit();
+}
+
+// ══════════════════════════════════════════════════════════
+// DELETE
+// ══════════════════════════════════════════════════════════
+function openDel(id) {
+  delId = id;
+  const t = tools.find(x => x.id === id);
+  document.getElementById('delMsg').textContent =
+    t ? `"${t.name}" will be removed from your panel.` : 'This tool will be removed from your panel.';
+  document.getElementById('delOverlay').classList.add('open');
+}
+
+function closeDel() {
+  delId = null;
+  document.getElementById('delOverlay').classList.remove('open');
+}
+
+function confirmDel() {
+  if (delId) { tools = tools.filter(x => x.id !== delId); save(); renderTiles(); }
+  closeDel();
+}
+
+// ══════════════════════════════════════════════════════════
+// IMPORT / EXPORT
+// ══════════════════════════════════════════════════════════
+function doExport() {
+  const yaml = jsyaml.dump({ tools }, { lineWidth: -1 });
+  const a = Object.assign(document.createElement('a'), {
+    href:     URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' })),
+    download: 'tools-panel.yaml',
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function triggerImport() {
+  document.getElementById('yamlInput').click();
+}
+
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const parsed = jsyaml.load(ev.target.result);
+      if (parsed && Array.isArray(parsed.tools)) {
+        tools = parsed.tools.map(t => ({
+          ...t,
+          id: t.id || ('tool_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)),
+        }));
+        save();
+        renderTiles();
+      } else {
+        alert('Invalid YAML: expected a "tools:" array at the top level.');
+      }
+    } catch (err) {
+      alert('Could not parse YAML:\n' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // allow re-importing same file
+}
+
+// ══════════════════════════════════════════════════════════
+// KEYBOARD & OVERLAY CLOSE
+// ══════════════════════════════════════════════════════════
+document.getElementById('editOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeEdit();
+});
+document.getElementById('delOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeDel();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeEdit(); closeDel(); }
+  if (e.key === 'Enter' && document.getElementById('editOverlay').classList.contains('open')) {
+    // Only save on Enter if focus is not in icon search
+    if (document.activeElement.id !== 'iconSearch') saveTool();
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+// INIT  (deferred until all external scripts have loaded)
+// ══════════════════════════════════════════════════════════
+window.addEventListener('load', function () {
+  loadTheme();
+  load();
+  renderTiles();
+});
+</script>
+
+<!-- CDN scripts at end of body so they are guaranteed to execute
+     before the inline script above AND before window.onload fires -->
+<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+</body>
+</html>
